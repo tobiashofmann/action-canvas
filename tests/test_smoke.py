@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = ROOT / "render_canvas.py"
+SCRIPT = ROOT / "skills" / "action-canvas" / "render_canvas.py"
 EXAMPLES = ROOT / "examples"
 
 MINIMAL = """# Long title for the test

@@ -23,7 +23,9 @@ The agent creates the canvas when a feature branch starts, plans it, keeps it cu
 npx skills add tobiashofmann/action-canvas
 ```
 
-Or copy this folder to `~/.claude/skills/action-canvas` (personal) or `<project>/.claude/skills/action-canvas` (per project).
+Only the `skills/action-canvas/` folder (`SKILL.md` and `render_canvas.py`) is installed; examples and tests stay in the repo.
+
+Or copy `skills/action-canvas` to `~/.claude/skills/action-canvas` (personal) or `<project>/.claude/skills/action-canvas` (per project).
 
 ## Requirements
 
@@ -32,12 +34,12 @@ Or copy this folder to `~/.claude/skills/action-canvas` (personal) or `<project>
 
 ## Usage
 
-Start a feature branch and describe the feature. The skill triggers on its own. You can also run the renderer directly:
+Start a feature branch and describe the feature. The skill triggers on its own. You can also run the renderer directly (in an installed skill the script sits next to `SKILL.md`, e.g. `.claude/skills/action-canvas/render_canvas.py`):
 
 ```bash
-python3 render_canvas.py docs/action-canvas/feature-x.md --check plan
-python3 render_canvas.py docs/action-canvas/feature-x.md --png
-python3 render_canvas.py docs/action-canvas/feature-x.md --lang de   # force a language
+python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md --check plan
+python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md --png
+python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md --lang de   # force a language
 ```
 
 Examples: [English](examples/feature-pdf-export.md), [German](examples/feature-pdf-export.de.md).
