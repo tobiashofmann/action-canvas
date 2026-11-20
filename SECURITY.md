@@ -12,7 +12,7 @@ Only the latest released version is supported with security fixes.
 ## Reporting a Vulnerability
 
 Please report security issues privately via
-[GitHub Security Advisories](https://github.com/tobiashofmann/UI5-action-canvas/security/advisories/new),
+[GitHub Security Advisories](https://github.com/tobiashofmann/action-canvas/security/advisories/new),
 not as a public issue.
 
 Reports are reviewed, but at best effort only; there's no guaranteed response time. If a
