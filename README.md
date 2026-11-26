@@ -51,7 +51,3 @@ python3 -m unittest discover -s tests -v
 ```
 
 Smoke tests for the renderer (standard library only): examples pass the checks, missing fields fail, localized messages, Implementation warnings, truncation, escaping.
-
-## License
-
-[Apache License 2.0](LICENSE)
