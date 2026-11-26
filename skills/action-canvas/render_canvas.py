@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Tobias Hofmann
-"""Renders an action canvas (Markdown) as SVG (optionally PNG) and checks the mandatory fields.
+"""Renders an action canvas (Markdown) as a PNG image (SVG on request) and checks the mandatory fields.
 
 Usage:
-  python3 render_canvas.py docs/action-canvas/<slug>.md            # writes <slug>.svg next to it
-  python3 render_canvas.py docs/action-canvas/<slug>.md --png      # additionally PNG (needs cairosvg or rsvg-convert)
+  python3 render_canvas.py docs/action-canvas/<slug>.md              # writes <slug>.png next to it
+  python3 render_canvas.py docs/action-canvas/<slug>.md --svg        # writes <slug>.svg instead
+  python3 render_canvas.py docs/action-canvas/<slug>.md --svg --png  # writes both
   python3 render_canvas.py docs/action-canvas/<slug>.md --check start|plan|final
+
+PNG output needs cairosvg or rsvg-convert; SVG output needs the standard library only.
 """
 import argparse, re, sys, shutil, subprocess, textwrap, unicodedata
 from pathlib import Path
@@ -35,7 +38,7 @@ LANGS = {
         "act_short": "Activities", "done": "done",
         "truncated": "\u2026 (full text in the Markdown)", "missing": "Phase '{phase}': missing fields: {fields}",
         "ok": "Phase '{phase}': all mandatory fields filled.",
-        "png_skipped": "PNG skipped: neither cairosvg nor rsvg-convert available.",
+        "png_failed": "PNG not created: neither cairosvg nor rsvg-convert available. Install one (pip install cairosvg) or use --svg.",
         "warn_dup": "Warning: Implementation/{label} appears more than once; only the last entry is shown.",
         "warn_long": "Warning: Implementation/{label}: justification too long, cut after about {max} characters in the image. Shorten it.",
         "warn_ignored": "Warning: Implementation entry without a 1-5 value is not shown in the image: {text}",
@@ -51,7 +54,7 @@ LANGS = {
         "act_short": "Aktivitäten", "done": "erledigt",
         "truncated": "\u2026 (vollst\u00e4ndig im Markdown)", "missing": "Phase '{phase}': fehlende Felder: {fields}",
         "ok": "Phase '{phase}': alle Pflichtfelder bef\u00fcllt.",
-        "png_skipped": "PNG \u00fcbersprungen: weder cairosvg noch rsvg-convert verf\u00fcgbar.",
+        "png_failed": "PNG nicht erstellt: weder cairosvg noch rsvg-convert verfügbar. Eines installieren (pip install cairosvg) oder --svg verwenden.",
         "warn_dup": "Warnung: Umsetzung/{label} kommt mehrfach vor; im Bild wird nur der letzte Eintrag gezeigt.",
         "warn_long": "Warnung: Umsetzung/{label}: Begr\u00fcndung zu lang, im Bild nach ca. {max} Zeichen abgeschnitten. Bitte k\u00fcrzen.",
         "warn_ignored": "Warnung: Umsetzung-Eintrag ohne Wert (1\u20135) wird im Bild nicht angezeigt: {text}",
@@ -67,7 +70,7 @@ LANGS = {
         "act_short": "Atividades", "done": "concluídas",
         "truncated": "\u2026 (texto completo no Markdown)", "missing": "Fase '{phase}': campos em falta: {fields}",
         "ok": "Fase '{phase}': todos os campos obrigat\u00f3rios preenchidos.",
-        "png_skipped": "PNG ignorado: cairosvg e rsvg-convert indispon\u00edveis.",
+        "png_failed": "PNG não criado: cairosvg e rsvg-convert indisponíveis. Instale um deles (pip install cairosvg) ou use --svg.",
         "warn_dup": "Aviso: Implementa\u00e7\u00e3o/{label} aparece mais de uma vez; s\u00f3 a \u00faltima entrada \u00e9 mostrada.",
         "warn_long": "Aviso: Implementa\u00e7\u00e3o/{label}: justifica\u00e7\u00e3o demasiado longa, cortada na imagem ap\u00f3s cerca de {max} caracteres. Encurte-a.",
         "warn_ignored": "Aviso: entrada de Implementa\u00e7\u00e3o sem valor (1\u20135) n\u00e3o \u00e9 mostrada na imagem: {text}",
@@ -83,7 +86,7 @@ LANGS = {
         "act_short": "Activités", "done": "terminées",
         "truncated": "\u2026 (texte complet dans le Markdown)", "missing": "Phase \u00ab {phase} \u00bb : champs manquants : {fields}",
         "ok": "Phase \u00ab {phase} \u00bb : tous les champs obligatoires sont remplis.",
-        "png_skipped": "PNG ignor\u00e9 : ni cairosvg ni rsvg-convert disponible.",
+        "png_failed": "PNG non créé : ni cairosvg ni rsvg-convert disponible. Installez-en un (pip install cairosvg) ou utilisez --svg.",
         "warn_dup": "Avertissement : Mise en \u0153uvre/{label} appara\u00eet plusieurs fois ; seule la derni\u00e8re entr\u00e9e est affich\u00e9e.",
         "warn_long": "Avertissement : Mise en \u0153uvre/{label} : justification trop longue, coup\u00e9e dans l'image apr\u00e8s environ {max} caract\u00e8res. Raccourcissez-la.",
         "warn_ignored": "Avertissement : entr\u00e9e de Mise en \u0153uvre sans valeur (1\u20135), non affich\u00e9e dans l'image : {text}",
@@ -99,7 +102,7 @@ LANGS = {
         "act_short": "Attività", "done": "completate",
         "truncated": "\u2026 (testo completo nel Markdown)", "missing": "Fase '{phase}': campi mancanti: {fields}",
         "ok": "Fase '{phase}': tutti i campi obbligatori compilati.",
-        "png_skipped": "PNG saltato: cairosvg e rsvg-convert non disponibili.",
+        "png_failed": "PNG non creato: cairosvg e rsvg-convert non disponibili. Installane uno (pip install cairosvg) oppure usa --svg.",
         "warn_dup": "Avviso: Attuazione/{label} compare pi\u00f9 volte; nell'immagine viene mostrata solo l'ultima voce.",
         "warn_long": "Avviso: Attuazione/{label}: motivazione troppo lunga, tagliata nell'immagine dopo circa {max} caratteri. Accorciala.",
         "warn_ignored": "Avviso: voce di Attuazione senza valore (1\u20135), non mostrata nell'immagine: {text}",
@@ -115,7 +118,7 @@ LANGS = {
         "act_short": "Actividades", "done": "completadas",
         "truncated": "\u2026 (texto completo en el Markdown)", "missing": "Fase '{phase}': campos que faltan: {fields}",
         "ok": "Fase '{phase}': todos los campos obligatorios completados.",
-        "png_skipped": "PNG omitido: no hay cairosvg ni rsvg-convert.",
+        "png_failed": "PNG no creado: no hay cairosvg ni rsvg-convert. Instala uno (pip install cairosvg) o usa --svg.",
         "warn_dup": "Aviso: Implementaci\u00f3n/{label} aparece m\u00e1s de una vez; solo se muestra la \u00faltima entrada.",
         "warn_long": "Aviso: Implementaci\u00f3n/{label}: justificaci\u00f3n demasiado larga, se corta en la imagen tras unos {max} caracteres. Ac\u00f3rtala.",
         "warn_ignored": "Aviso: la entrada de Implementaci\u00f3n sin valor (1\u20135) no se muestra en la imagen: {text}",
@@ -468,11 +471,28 @@ def render_svg(title, S, lang=DEFAULT_LANG):
     return "\n".join(p)
 
 
+PNG_WIDTH = 2320
+
+
+def write_png(svg, png):
+    """Convert the SVG text to a PNG file; False if no converter is available."""
+    try:
+        import cairosvg
+    except (ImportError, OSError):  # OSError: package installed, but the cairo library is missing
+        if not shutil.which("rsvg-convert"):
+            return False
+        subprocess.run(["rsvg-convert", "-w", str(PNG_WIDTH), "-o", str(png)], input=svg.encode("utf-8"), check=True)
+    else:
+        cairosvg.svg2png(bytestring=svg.encode("utf-8"), write_to=str(png), output_width=PNG_WIDTH)
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("markdown")
-    ap.add_argument("-o", "--out")
-    ap.add_argument("--png", action="store_true")
+    ap.add_argument("-o", "--out", help="output path; the suffix is set to .png / .svg; default: next to the Markdown")
+    ap.add_argument("--png", action="store_true", help="write a PNG image (default; only needed together with --svg)")
+    ap.add_argument("--svg", action="store_true", help="write an SVG image instead of the PNG (add --png for both)")
     ap.add_argument("--check", choices=PHASES)
     ap.add_argument("--lang", help="output language (en, de, pt, fr, it, es; pt-BR accepted); default: detected from the canvas, else en")
     a = ap.parse_args()
@@ -494,23 +514,20 @@ def main():
         if miss:
             sys.exit(1)
         return
-    out = Path(a.out) if a.out else md.with_suffix(".svg")
-    out.write_text(render_svg(title, S, lang), encoding="utf-8")
-    print(f"SVG: {out}")
+    out = Path(a.out) if a.out else md
+    svg = render_svg(title, S, lang)
+    if a.svg:
+        svg_path = out.with_suffix(".svg")
+        svg_path.write_text(svg, encoding="utf-8")
+        print(f"SVG: {svg_path}")
     for w in warns:
         print(w)
-    if a.png:
-        png = out.with_suffix(".png")
-        try:
-            import cairosvg
-            cairosvg.svg2png(url=str(out), write_to=str(png), output_width=2320)
-        except ImportError:
-            if shutil.which("rsvg-convert"):
-                subprocess.run(["rsvg-convert", "-w", "2320", "-o", str(png), str(out)], check=True)
-            else:
-                print(LANGS[lang]["png_skipped"])
-                return
-        print(f"PNG: {png}")
+    if a.png or not a.svg:
+        png_path = out.with_suffix(".png")
+        if not write_png(svg, png_path):
+            print(LANGS[lang]["png_failed"])
+            sys.exit(1)
+        print(f"PNG: {png_path}")
 
 
 if __name__ == "__main__":

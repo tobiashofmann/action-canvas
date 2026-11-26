@@ -4,6 +4,8 @@
 
 Run from the repo root:  python3 -m unittest discover -s tests -v
 """
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,9 +27,14 @@ MINIMAL = """# Long title for the test
 """
 
 
-def run(*args):
+def run(*args, env=None):
     return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)],
-                          capture_output=True, text=True, encoding="utf-8")
+                          capture_output=True, text=True, encoding="utf-8", env=env)
+
+
+def has_png_converter():
+    probe = subprocess.run([sys.executable, "-c", "import cairosvg"], capture_output=True)
+    return probe.returncode == 0 or shutil.which("rsvg-convert") is not None
 
 
 class SmokeTest(unittest.TestCase):
@@ -45,7 +52,7 @@ class SmokeTest(unittest.TestCase):
 
     def render(self, md_path):
         out = self.tmp / (md_path.stem + ".svg")
-        res = run(md_path, "-o", out)
+        res = run(md_path, "--svg", "-o", out)
         self.assertEqual(res.returncode, 0, res.stderr)
         return res, out.read_text(encoding="utf-8")
 
@@ -69,6 +76,39 @@ class SmokeTest(unittest.TestCase):
         _, svg = self.render(EXAMPLES / "feature-pdf-export.de.md")
         for word in ("Umsetzung", "Offene Punkte", "Zeitlicher Horizont", "Was? Wer? Wann?"):
             self.assertIn(word, svg)
+
+    # --- output formats -----------------------------------------------------
+    def minimal(self):
+        return self.write("out.md", MINIMAL.format(lang="en", measure="Measure", description="Description", background="Background"))
+
+    @unittest.skipUnless(has_png_converter(), "needs cairosvg or rsvg-convert")
+    def test_default_writes_only_png(self):
+        res = run(self.minimal())
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual((self.tmp / "out.png").read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertFalse((self.tmp / "out.svg").exists())
+
+    def test_svg_flag_writes_only_svg(self):
+        res = run(self.minimal(), "--svg")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertTrue((self.tmp / "out.svg").exists())
+        self.assertFalse((self.tmp / "out.png").exists())
+
+    @unittest.skipUnless(has_png_converter(), "needs cairosvg or rsvg-convert")
+    def test_svg_and_png_flags_write_both(self):
+        res = run(self.minimal(), "--svg", "--png")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertTrue((self.tmp / "out.svg").exists())
+        self.assertTrue((self.tmp / "out.png").exists())
+
+    def test_missing_png_converter_fails(self):
+        self.write("cairosvg.py", "raise ImportError('blocked for the test')\n")
+        env = {**os.environ, "PYTHONPATH": str(self.tmp), "PATH": str(self.tmp)}
+        res = run(self.minimal(), env=env)
+        self.assertEqual(res.returncode, 1, res.stderr)
+        self.assertIn("PNG not created", res.stdout)
+        self.assertFalse((self.tmp / "out.png").exists())
+        self.assertFalse((self.tmp / "out.svg").exists())
 
     # --- checks -------------------------------------------------------------
     def test_missing_fields_fail_with_exit_1(self):
