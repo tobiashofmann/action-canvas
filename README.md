@@ -5,7 +5,7 @@
 
 An [Agent Skill](https://docs.claude.com/en/docs/claude-code/skills) that keeps a one-page **action canvas** for every feature branch, so the requester can always see **what** is being done, **why**, and **with what impact**.
 
-The agent creates the canvas when a feature branch starts, plans it, keeps it current while it works, and finalizes it before the PR. Each canvas is a Markdown file plus a rendered SVG/PNG image.
+The agent creates the canvas when a feature branch starts, plans it, keeps it current while it works, and finalizes it before the PR. Each canvas is a Markdown file plus a rendered PNG image (SVG on request).
 
 ![Example canvas](examples/feature-pdf-export.png)
 
@@ -30,7 +30,7 @@ Or copy `skills/action-canvas` to `~/.claude/skills/action-canvas` (personal) or
 ## Requirements
 
 - Python 3 (standard library only).
-- Optional, for PNG output: `pip install cairosvg` or `rsvg-convert`.
+- For the PNG image: `cairosvg` (`pip install cairosvg`) or `rsvg-convert`. SVG output (`--svg`) works without them.
 
 ## Usage
 
@@ -38,7 +38,8 @@ Start a feature branch and describe the feature. The skill triggers on its own. 
 
 ```bash
 python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md --check plan
-python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md --png
+python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md          # PNG image (default)
+python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md --svg    # SVG instead; add --png for both
 python3 skills/action-canvas/render_canvas.py docs/action-canvas/feature-x.md --lang de   # force a language
 ```
 
@@ -50,4 +51,4 @@ Examples: [English](examples/feature-pdf-export.md), [German](examples/feature-p
 python3 -m unittest discover -s tests -v
 ```
 
-Smoke tests for the renderer (standard library only): examples pass the checks, missing fields fail, localized messages, Implementation warnings, truncation, escaping.
+Smoke tests for the renderer (standard library only): examples pass the checks, missing fields fail, localized messages, Implementation warnings, truncation, escaping, output formats.

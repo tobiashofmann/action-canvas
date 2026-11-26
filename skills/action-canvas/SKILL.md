@@ -1,13 +1,13 @@
 ---
 name: action-canvas
-description: Maintains one action canvas (one-page planning canvas, Markdown + SVG/PNG image) per feature branch in docs/action-canvas, so the requester sees what is done, why, and with what impact. Use when a feature branch is created or a new feature starts, while working on a feature branch, and before a PR or merge; also when a developer invokes it mid-development on a branch without a canvas. Supports en, de, pt, fr, it, es.
+description: Maintains one action canvas (one-page planning canvas, Markdown + PNG image) per feature branch in docs/action-canvas, so the requester sees what is done, why, and with what impact. Use when a feature branch is created or a new feature starts, while working on a feature branch, and before a PR or merge; also when a developer invokes it mid-development on a branch without a canvas. Supports en, de, pt, fr, it, es.
 ---
 
 # Action canvas for feature branches
 
 Every feature branch gets an action canvas. The requester should be able to see at any time: **what** is being done, **why**, and **what impact** it has.
 
-Location: `docs/action-canvas/<branch-slug>.md` (text) and `docs/action-canvas/<branch-slug>.svg` (+ optional `.png`) as an image in the template's layout. `<branch-slug>` = branch name with `/` replaced by `-` (e.g. `feature/pdf-export` → `feature-pdf-export`).
+Location: `docs/action-canvas/<branch-slug>.md` (text) and `docs/action-canvas/<branch-slug>.png` as an image in the template's layout. `<branch-slug>` = branch name with `/` replaced by `-` (e.g. `feature/pdf-export` → `feature-pdf-export`).
 
 `RENDER` below stands for `python3 <skill-dir>/render_canvas.py`, where `<skill-dir>` is the directory containing this SKILL.md (e.g. `.claude/skills/action-canvas`, `~/.claude/skills/action-canvas` or `.agents/skills/action-canvas`, depending on how it was installed).
 
@@ -118,7 +118,7 @@ Before PR/merge, or when the requester declares development finished:
 
 1. `RENDER docs/action-canvas/<branch-slug>.md --check final` – **all fields except Open Points** must be filled, including all four Implementation values.
 2. If something is missing that the AI may not decide itself, or if `_open_` entries, `(Assumption)` entries or open points are still present: ask the requester and incorporate the answers, then remove the answered open points. Only follow-up topics the requester has explicitly deferred may remain in Open Points.
-3. Set `phase=final` in the meta comment, render the final image (`--png`), commit.
+3. Set `phase=final` in the meta comment, render the final image, commit.
 4. Present it to the requester with 2–3 sentences: what was implemented, why, what impact.
 
 ## Markdown template
@@ -130,7 +130,7 @@ The `#` title is the long version of the name (shown at the top of the image, be
 
 <!-- canvas-meta: branch=<branch>; lang=<en|de|pt|fr|it|es>; phase=start|plan|ongoing|final; created=<YYYY-MM-DD>; updated=<YYYY-MM-DD> -->
 
-![Action Canvas](<branch-slug>.svg)
+![Action Canvas](<branch-slug>.png)
 
 ## Measure
 - <short version of the title>
@@ -177,13 +177,15 @@ Wording: short, in bullet points, understandable for non-developers (the request
 
 After each phase (start, plan, closing) and after significant changes:
 
-1. `RENDER docs/action-canvas/<branch-slug>.md --png` (PNG needs `cairosvg` or `rsvg-convert`; if neither is available, try `pip install cairosvg`, otherwise the SVG is enough).
-2. Show the image to the requester as an artifact: if a tool for sending/showing files is available (e.g. SendUserFile), hand over the PNG/SVG with it; otherwise state the path. The Markdown embeds the SVG, so it is also visible on the Git host (GitHub/GitLab).
+1. `RENDER docs/action-canvas/<branch-slug>.md` writes the PNG, the only image by default. It needs `cairosvg` or `rsvg-convert`; if neither is available, try `pip install cairosvg`. If that fails too, tell the requester and offer an SVG instead.
+   - Create an SVG only when the requester asks for it or accepts that offer: `--svg` (SVG only) or `--svg --png` (both).
+   - If an existing canvas still embeds `<branch-slug>.svg` and the requester does not want an SVG, change the link to `.png` and delete that SVG file.
+2. Show the image to the requester as an artifact: if a tool for sending/showing files is available (e.g. SendUserFile), hand over the PNG with it; otherwise state the path. The Markdown embeds the PNG, so it is also visible on the Git host (GitHub/GitLab).
 3. Add a short note in the chat: phase, what is new, open questions.
 
 ## Renderer
 
-The script `render_canvas.py` lives in the skill directory and is called from there; it is **not** copied into the project (Python standard library only; PNG optional). It reads the Markdown, checks mandatory fields per phase (`--check start|plan|final`, exit code 1 on gaps), warns about Implementation entries the image cannot show (duplicate scale, line without `n/5`, justification too long) and draws the canvas as a card layout (numbered badge and color per field): the label "ACTION CANVAS" and the long title on top; three cards (Added Value, Stakeholders, IT); in the middle row Implementation with four 1–5 bars and justifications on the left, a dark box with the short Measure plus Description and Background cards in the center, and the activities on the right (✓ done, ○ open, with a progress bar); at the bottom Critical Success Factors, Resources, Open Points. Image labels follow the canvas language (see "Language"). Text that is too long is shrunk and, if necessary, truncated with "… (full text in the Markdown)".
+The script `render_canvas.py` lives in the skill directory and is called from there; it is **not** copied into the project (Python standard library only; PNG output additionally needs `cairosvg` or `rsvg-convert`). It reads the Markdown, checks mandatory fields per phase (`--check start|plan|final`, exit code 1 on gaps), warns about Implementation entries the image cannot show (duplicate scale, line without `n/5`, justification too long) and draws the canvas (PNG by default, SVG with `--svg`) as a card layout (numbered badge and color per field): the label "ACTION CANVAS" and the long title on top; three cards (Added Value, Stakeholders, IT); in the middle row Implementation with four 1–5 bars and justifications on the left, a dark box with the short Measure plus Description and Background cards in the center, and the activities on the right (✓ done, ○ open, with a progress bar); at the bottom Critical Success Factors, Resources, Open Points. Image labels follow the canvas language (see "Language"). Text that is too long is shrunk and, if necessary, truncated with "… (full text in the Markdown)".
 
 ## Checklist before closing
 
@@ -191,6 +193,6 @@ The script `render_canvas.py` lives in the skill directory and is called from th
 - [ ] All four Implementation values in the format `n/5` with justification
 - [ ] No `_open_`, no unconfirmed `(Assumption)`; Open Points answered and removed (only deliberately deferred follow-ups remain)
 - [ ] IT entries evidenced (location in the repo) or confirmed by the requester
-- [ ] `--check final` green, SVG/PNG up to date, committed in the branch
+- [ ] `--check final` green, PNG up to date, committed in the branch
 - [ ] Canvas and chat in the requester's language (`lang=` set in the meta comment)
 - [ ] Canvas presented to the requester

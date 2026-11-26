@@ -2,7 +2,7 @@
 
 <!-- canvas-meta: branch=feature/pdf-export; lang=en; phase=final; created=2026-11-20; updated=2026-11-20 -->
 
-![Action Canvas](feature-pdf-export.svg)
+![Action Canvas](feature-pdf-export.png)
 
 ## Measure
 - PDF export of the monthly reports
